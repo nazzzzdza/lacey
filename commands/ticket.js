@@ -42,9 +42,16 @@ module.exports = {
       // Acknowledge immediately
       await interaction.deferReply({ ephemeral: true });
 
-      const timestamp = Date.now().toString().slice(-4);
-      const ticketName = const ticketName = `ticket-${member.user.username.toLowerCase()}`;
+      // Base name for ticket
+      const baseName = `ticket-${member.user.username.toLowerCase()}`;
+      let ticketName = baseName;
+      let counter = 1;
 
+      // Allow multiple tickets by checking existing channels
+      while (guild.channels.cache.some(ch => ch.name === ticketName)) {
+        ticketName = `${baseName}-${counter}`;
+        counter++;
+      }
 
       // Permission overwrites
       const permissionOverwrites = [
@@ -83,7 +90,7 @@ module.exports = {
       // Close button
       const closeButton = new ButtonBuilder()
         .setCustomId("close_ticket")
-        .setLabel("Close Ticket")
+        .setLabel("close")
         .setStyle(ButtonStyle.Secondary);
 
       const row = new ActionRowBuilder().addComponents(closeButton);
@@ -109,7 +116,7 @@ module.exports = {
         .addFields(
           { name: "Ticket Channel", value: ticketChannel.name },
           { name: "Closed By", value: member.tag },
-          { name: "Transcript (last 100 messages)", value: transcript || "No messages" }
+          { name: "Transcript", value: transcript || "No messages" }
         )
         .setColor(0xFFC0CB)
         .setTimestamp();
@@ -124,3 +131,4 @@ module.exports = {
     }
   }
 };
+
