@@ -1,5 +1,6 @@
 // Lacey Discord Bot
-const { Client, GatewayIntentBits } = require("discord.js");
+const { Client, GatewayIntentBits, REST, Routes, Collection } = require("discord.js");
+const fs = require("fs");
 const express = require("express");
 
 const app = express();
@@ -19,31 +20,75 @@ app.listen(PORT, () => {
 // ---------------------------
 // Discord client
 // ---------------------------
-const client = new Client({
-  intents: [GatewayIntentBits.Guilds]
-});
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+client.commands = new Collection();
 
-client.once("ready", () => {
+// ---------------------------
+// Load commands dynamically from the commands folder
+// ---------------------------
+const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+
+const commands = [];
+
+for (const file of commandFiles) {
+  const command = require(`./commands/${file}`);
+  client.commands.set(command.data.name, command);
+  commands.push(command.data.toJSON());
+}
+
+// ---------------------------
+// Register commands with Discord
+// ---------------------------
+const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+
+client.once("ready", async () => {
   console.log(`Lacey is online as ${client.user.tag}`);
 
-  // Measure bot latency
+  // Log latency
   const latency = Date.now() - client.readyTimestamp;
-  console.log(`lacey latency: ${latency}ms`);
+  console.log(`🏎️ Lacey latency: ${latency}ms`);
 
-  // ---------------------------
-  // Streaming status (purple icon)
-  // ---------------------------
+  // Streaming status (purple Twitch icon)
   client.user.setPresence({
     activities: [{
       name: "checking your orders <3",
-      type: 1, // 1 = Streaming
-      url: "https://www.twitch.tv/laceyshp" // <-- REPLACE with your Twitch URL
+      type: 1, // Streaming
+      url: "https://www.twitch.tv/laceyshp" // <-- Replace with your Twitch URL
     }],
     status: "online"
   });
+
+  // Register all commands globally
+  try {
+    await rest.put(
+      Routes.applicationCommands(client.user.id),
+      { body: commands }
+    );
+    console.log("Slash commands registered.");
+  } catch (error) {
+    console.error(error);
+  }
 });
 
 // ---------------------------
-// Login with bot token securely
+// Handle slash command interactions
+// ---------------------------
+client.on("interactionCreate", async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+
+  const command = client.commands.get(interaction.commandName);
+
+  if (!command) return;
+
+  try {
+    await command.execute(interaction);
+  } catch (error) {
+    console.error(error);
+    await interaction.reply({ content: "There was an error executing that command, dm naz with ss.", ephemeral: true });
+  }
+});
+
+// ---------------------------
+// Login securely via environment variable
 // ---------------------------
 client.login(process.env.TOKEN);
