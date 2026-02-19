@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, PermissionFlagsBits, ChannelType } = require("discord.js");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -6,19 +6,120 @@ module.exports = {
     .setDescription("ticket button"),
 
   async execute(interaction) {
-    // Create the Open Ticket button (grey)
+    // Send the Open Ticket button normally in the channel
     const button = new ButtonBuilder()
       .setCustomId("open_ticket")
       .setLabel("order here")
-      .setStyle(ButtonStyle.Secondary); // grey button
+      .setStyle(ButtonStyle.Secondary); // grey
 
     const row = new ActionRowBuilder().addComponents(button);
 
-    // Reply with just the button (ephemeral)
-    await interaction.reply({
-      content: "\u200B", // invisible character so the message isn't empty
-      components: [row],
-      ephemeral: false // only visible to the user who ran the command
-    });
+    await interaction.channel.send({ content: "\u200B", components: [row] });
+
+    // Acknowledge slash command silently to prevent "interaction failed"
+    await interaction.deferReply({ ephemeral: true });
+    await interaction.deleteReply();
+  },
+
+  // Button interaction handler
+  async handleInteraction(interaction) {
+    if (!interaction.isButton()) return;
+
+    const guild = interaction.guild;
+    const member = interaction.member;
+
+    // -------------------------------
+    // CONFIG — replace these IDs
+    // -------------------------------
+    const staffRoles = ["1469795995649839365", "1469795995964539066"]; // staff role IDs
+    const logChannelId = "1469795996811792576"; // log channel
+    const ticketCategoryId = "1474139622345805929"; // category to create tickets in
+
+    // ---------------------------
+    // OPEN TICKET
+    // ---------------------------
+    if (interaction.customId === "open_ticket") {
+      // Acknowledge immediately
+      await interaction.deferReply({ ephemeral: true });
+
+      const timestamp = Date.now().toString().slice(-4);
+      const ticketName = `ticket-${member.user.username.toLowerCase()}-${timestamp}`;
+
+      // Permission overwrites
+      const permissionOverwrites = [
+        { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+        { id: member.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
+      ];
+
+      // Add all staff roles
+      for (const roleId of staffRoles) {
+        permissionOverwrites.push({
+          id: roleId,
+          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
+        });
+      }
+
+      // Create ticket channel inside category
+      const ticketChannel = await guild.channels.create({
+        name: ticketName,
+        type: ChannelType.GuildText,
+        parent: ticketCategoryId,
+        permissionOverwrites
+      });
+
+      // Send ephemeral reply to user mentioning their ticket
+      await interaction.editReply({
+        content: `Find your ticket here love: ${ticketChannel}`,
+        ephemeral: true
+      });
+
+      // Embed for the ticket channel
+      const embed = new EmbedBuilder()
+        .setTitle("Incoming order!")
+        .setDescription("Please type `.order` to start your order.\nDo not overping staff or owners or your ticket will be closed.")
+        .setColor(0x808080);
+
+      // Close button
+      const closeButton = new ButtonBuilder()
+        .setCustomId("close_ticket")
+        .setLabel("Close Ticket")
+        .setStyle(ButtonStyle.Secondary);
+
+      const row = new ActionRowBuilder().addComponents(closeButton);
+
+      await ticketChannel.send({ content: `<@${member.user.id}>`, embeds: [embed], components: [row] });
+    }
+
+    // ---------------------------
+    // CLOSE TICKET
+    // ---------------------------
+    if (interaction.customId === "close_ticket") {
+      const ticketChannel = interaction.channel;
+      const member = interaction.user;
+      const logChannel = guild.channels.cache.get(logChannelId);
+
+      // Fetch last 100 messages
+      const messages = await ticketChannel.messages.fetch({ limit: 100 });
+      const transcript = messages.map(m => `[${m.author.tag}]: ${m.content}`).reverse().join("\n");
+
+      // Log embed
+      const logEmbed = new EmbedBuilder()
+        .setTitle("Ticket Closed")
+        .addFields(
+          { name: "Ticket Channel", value: ticketChannel.name },
+          { name: "Closed By", value: member.tag },
+          { name: "Transcript (last 100 messages)", value: transcript || "No messages" }
+        )
+        .setColor(0xFFC0CB)
+        .setTimestamp();
+
+      if (logChannel) await logChannel.send({ embeds: [logEmbed] });
+
+      // Delete ticket channel
+      await ticketChannel.delete();
+
+      // Acknowledge button click silently
+      await interaction.deferUpdate();
+    }
   }
 };
