@@ -18,7 +18,7 @@ module.exports = {
     await interaction.reply({
       content: "\u200B", // invisible character so the message isn't empty
       components: [row],
-      ephemeral: true // only visible to the user who ran the command
+      ephemeral: false // only visible to the user who ran the command
     });
   }
 };
