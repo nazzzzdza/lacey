@@ -6,6 +6,7 @@ module.exports = {
     .setDescription("ticket button"),
 
   async execute(interaction) {
+    // Send the Open Ticket button normally in the channel
     const button = new ButtonBuilder()
       .setCustomId("open_ticket")
       .setLabel("order here")
@@ -26,9 +27,12 @@ module.exports = {
     const guild = interaction.guild;
     const member = interaction.member;
 
-    const staffRoles = ["1469795995649839365", "1469795995964539066"];
-    const logChannelId = "1469795996811792576";
-    const ticketCategoryId = "1474139622345805929";
+    // -------------------------------
+    // CONFIG — replace these IDs
+    // -------------------------------
+    const staffRoles = ["1469795995649839365", "1469795995964539066"]; // staff roles
+    const logChannelId = "1469795996811792576"; // log channel
+    const ticketCategoryId = "1474139622345805929"; // category to create tickets in
 
     // ---------------------------
     // OPEN TICKET
@@ -45,6 +49,7 @@ module.exports = {
         counter++;
       }
 
+      // Permission overwrites
       const permissionOverwrites = [
         { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
         { id: member.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
@@ -57,6 +62,7 @@ module.exports = {
         });
       }
 
+      // Create ticket channel inside category
       const ticketChannel = await guild.channels.create({
         name: ticketName,
         type: ChannelType.GuildText,
@@ -64,16 +70,13 @@ module.exports = {
         permissionOverwrites
       });
 
-      await interaction.editReply({
-        content: `find your ticket here love: ${ticketChannel}`,
-        ephemeral: true
-      });
-
+      // Embed for the ticket channel
       const embed = new EmbedBuilder()
         .setTitle("Incoming order!")
         .setDescription("Please type `.order` to start your order.\nDo not overping staff or owners or your ticket will be closed.")
         .setColor(0xFFC0CB);
 
+      // Close button
       const closeButton = new ButtonBuilder()
         .setCustomId("close_ticket")
         .setLabel("close")
@@ -81,7 +84,18 @@ module.exports = {
 
       const row = new ActionRowBuilder().addComponents(closeButton);
 
-      await ticketChannel.send({ content: `<@${member.user.id}>`, embeds: [embed], components: [row] });
+      // Send message in the ticket channel, ping user + staff roles
+      await ticketChannel.send({
+        content: `<@${member.user.id}> ${staffRoles.map(r => `<@&${r}>`).join(" ")}`,
+        embeds: [embed],
+        components: [row]
+      });
+
+      // Ephemeral reply to the ticket opener
+      await interaction.editReply({
+        content: `find your ticket here love: ${ticketChannel}`,
+        ephemeral: true
+      });
     }
 
     // ---------------------------
@@ -92,10 +106,12 @@ module.exports = {
       const closer = interaction.user;
       const logChannel = guild.channels.cache.get(logChannelId);
 
+      // Fetch last 100 messages
       const messages = await ticketChannel.messages.fetch({ limit: 100 });
       const transcript = messages.map(m => `[${m.author.tag}]: ${m.content}`).reverse().join("\n");
       const transcriptBuffer = Buffer.from(transcript || "No messages", "utf-8");
 
+      // Log embed
       const logEmbed = new EmbedBuilder()
         .setTitle("Ticket Closed")
         .addFields(
@@ -112,7 +128,10 @@ module.exports = {
         });
       }
 
+      // Delete ticket channel
       await ticketChannel.delete();
+
+      // Acknowledge button click silently
       await interaction.deferUpdate();
     }
   }
