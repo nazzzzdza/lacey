@@ -8,22 +8,24 @@ module.exports = {
     const guild = interaction.guild;
     const member = interaction.member;
 
-    // Replace with your staff role IDs
-    const staffRoles = ["1469795995649839365", "1469795995964539066"];
-    const logChannelId = "1469795996811792576"; // Replace with your log channel ID
-    const ticketCategoryId = "1474139622345805929"; // Replace with your ticket category ID
+    // -------------------------------
+    // CONFIG — replace these IDs
+    // -------------------------------
+    const staffRoles = ["1469795995649839365", "1469795995964539066"]; // multiple staff roles
+    const logChannelId = "1469795996811792576"; // channel to log closed tickets
+    const ticketCategoryId = "1474139622345805929"; // category where tickets will be created
 
     // ---------------------------
-    // Open ticket
+    // OPEN TICKET
     // ---------------------------
     if (interaction.customId === "open_ticket") {
-      // Generate a unique ticket channel name
-      const timestamp = Date.now().toString().slice(-4); // last 4 digits for uniqueness
+      // Generate unique ticket name
+      const timestamp = Date.now().toString().slice(-4);
       const ticketChannelName = `ticket-${member.user.username.toLowerCase()}-${timestamp}`;
 
       // Permission overwrites
       const permissionOverwrites = [
-        { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] }, // everyone else
+        { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] }, // everyone
         { id: member.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] } // ticket opener
       ];
 
@@ -39,7 +41,7 @@ module.exports = {
       const ticketChannel = await guild.channels.create({
         name: ticketChannelName,
         type: ChannelType.GuildText,
-        parent: ticketCategoryId, // <-- This puts the ticket inside the category
+        parent: ticketCategoryId,
         permissionOverwrites
       });
 
@@ -59,11 +61,13 @@ module.exports = {
       const row = new ActionRowBuilder().addComponents(closeButton);
 
       await ticketChannel.send({ content: `<@${member.user.id}>`, embeds: [embed], components: [row] });
-      await interaction.reply({ content: `Find your ticket here love: ${ticketChannel}`, ephemeral: true });
+
+      // Acknowledge the button click silently (no message)
+      await interaction.deferUpdate();
     }
 
     // ---------------------------
-    // Close ticket
+    // CLOSE TICKET
     // ---------------------------
     if (interaction.customId === "close_ticket") {
       const ticketChannel = interaction.channel;
@@ -72,7 +76,7 @@ module.exports = {
 
       // Fetch messages for transcript
       const messages = await ticketChannel.messages.fetch({ limit: 100 });
-      let transcript = messages.map(m => `[${m.author.tag}]: ${m.content}`).reverse().join("\n");
+      const transcript = messages.map(m => `[${m.author.tag}]: ${m.content}`).reverse().join("\n");
 
       // Log embed
       const logEmbed = new EmbedBuilder()
@@ -86,7 +90,13 @@ module.exports = {
         .setTimestamp();
 
       if (logChannel) await logChannel.send({ embeds: [logEmbed] });
+
+      // Delete the ticket channel
       await ticketChannel.delete();
+
+      // Acknowledge the button click silently
+      await interaction.deferUpdate();
     }
   }
 };
+
