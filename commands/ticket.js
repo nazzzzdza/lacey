@@ -98,37 +98,45 @@ module.exports = {
       await ticketChannel.send({ content: `<@${member.user.id}>`, embeds: [embed], components: [row] });
     }
 
-    // ---------------------------
-    // CLOSE TICKET
-    // ---------------------------
-    if (interaction.customId === "close_ticket") {
-      const ticketChannel = interaction.channel;
-      const member = interaction.user;
-      const logChannel = guild.channels.cache.get(logChannelId);
+// ---------------------------
+// CLOSE TICKET
+// ---------------------------
+if (interaction.customId === "close_ticket") {
+  const ticketChannel = interaction.channel;
+  const closer = interaction.user;
+  const logChannel = guild.channels.cache.get(logChannelId);
 
-      // Fetch last 100 messages
-      const messages = await ticketChannel.messages.fetch({ limit: 100 });
-      const transcript = messages.map(m => `[${m.author.tag}]: ${m.content}`).reverse().join("\n");
+  // Fetch last 100 messages
+  const messages = await ticketChannel.messages.fetch({ limit: 100 });
+  const transcript = messages
+    .map(m => `[${m.author.tag}]: ${m.content}`)
+    .reverse()
+    .join("\n");
 
-      // Log embed
-      const logEmbed = new EmbedBuilder()
-        .setTitle("Ticket Closed")
-        .addFields(
-          { name: "Ticket Channel", value: ticketChannel.name },
-          { name: "Closed By", value: member.tag },
-          { name: "Transcript", value: transcript || "No messages" }
-        )
-        .setColor(0xFFC0CB)
-        .setTimestamp();
+  // Create a buffer/file for transcript
+  const transcriptBuffer = Buffer.from(transcript || "No messages", "utf-8");
 
-      if (logChannel) await logChannel.send({ embeds: [logEmbed] });
+  // Log embed
+  const logEmbed = new EmbedBuilder()
+    .setTitle("Ticket Closed")
+    .addFields(
+      { name: "Ticket Channel", value: ticketChannel.name },
+      { name: "Closed By", value: `<@${closer.id}>` } // Blue mention
+    )
+    .setColor(0xFFC0CB)
+    .setTimestamp();
 
-      // Delete ticket channel
-      await ticketChannel.delete();
-
-      // Acknowledge button click silently
-      await interaction.deferUpdate();
-    }
+  if (logChannel) {
+    await logChannel.send({
+      embeds: [logEmbed],
+      files: [{ attachment: transcriptBuffer, name: `${ticketChannel.name}-transcript.txt` }]
+    });
   }
-};
+
+  // Delete ticket channel
+  await ticketChannel.delete();
+
+  // Acknowledge button click silently
+  await interaction.deferUpdate();
+}
 
