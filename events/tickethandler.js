@@ -19,6 +19,9 @@ module.exports = {
     // OPEN TICKET
     // ---------------------------
     if (interaction.customId === "open_ticket") {
+      // ✅ acknowledge interaction immediately to prevent "interaction failed"
+      await interaction.deferReply({ ephemeral: true });
+
       // Generate unique ticket name
       const timestamp = Date.now().toString().slice(-4);
       const ticketChannelName = `ticket-${member.user.username.toLowerCase()}-${timestamp}`;
@@ -37,7 +40,7 @@ module.exports = {
         });
       }
 
-      // Create ticket channel inside the category
+      // Create the ticket channel inside the category
       const ticketChannel = await guild.channels.create({
         name: ticketChannelName,
         type: ChannelType.GuildText,
@@ -49,7 +52,7 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setTitle("Incoming order!")
         .setDescription("Please type `.order` to start your order.\nDo not overping staff or owners or your ticket will be closed. Feel free to bump once if it's taking more than expected.")
-        .setColor(0x808080) // grey color
+        .setColor(0x808080) // grey
         .setTimestamp();
 
       // Close button (grey)
@@ -62,8 +65,8 @@ module.exports = {
 
       await ticketChannel.send({ content: `<@${member.user.id}>`, embeds: [embed], components: [row] });
 
-      // Acknowledge the button click silently (no message)
-      await interaction.deferUpdate();
+      // Delete the ephemeral deferred reply so user sees nothing
+      await interaction.deleteReply();
     }
 
     // ---------------------------
@@ -74,7 +77,7 @@ module.exports = {
       const member = interaction.user;
       const logChannel = guild.channels.cache.get(logChannelId);
 
-      // Fetch messages for transcript
+      // Fetch last 100 messages for transcript
       const messages = await ticketChannel.messages.fetch({ limit: 100 });
       const transcript = messages.map(m => `[${m.author.tag}]: ${m.content}`).reverse().join("\n");
 
@@ -91,10 +94,10 @@ module.exports = {
 
       if (logChannel) await logChannel.send({ embeds: [logEmbed] });
 
-      // Delete the ticket channel
+      // Delete ticket channel
       await ticketChannel.delete();
 
-      // Acknowledge the button click silently
+      // Acknowledge the interaction silently
       await interaction.deferUpdate();
     }
   }
