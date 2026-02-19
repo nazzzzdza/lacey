@@ -71,20 +71,34 @@ client.once("ready", async () => {
 });
 
 // ---------------------------
-// Handle slash command interactions
+// Handle all interactions
 // ---------------------------
-client.on("interactionCreate", async interaction => {
-  if (!interaction.isChatInputCommand()) return;
+client.on("interactionCreate", async (interaction) => {
+  // ---- Slash commands ----
+  if (interaction.isChatInputCommand()) {
+    const command = client.commands.get(interaction.commandName);
+    if (!command) return;
 
-  const command = client.commands.get(interaction.commandName);
+    try {
+      await command.execute(interaction);
+    } catch (error) {
+      console.error(error);
+      await interaction.reply({ content: "There was an error executing that command, dm naz with ss.", ephemeral: true });
+    }
+  }
 
-  if (!command) return;
-
-  try {
-    await command.execute(interaction);
-  } catch (error) {
-    console.error(error);
-    await interaction.reply({ content: "There was an error executing that command, dm naz with ss.", ephemeral: true });
+  // ---- Button interactions ----
+  else if (interaction.isButton()) {
+    // Forward the button interaction to all loaded commands that have a handleInteraction method
+    for (const command of client.commands.values()) {
+      if (typeof command.handleInteraction === "function") {
+        try {
+          await command.handleInteraction(interaction);
+        } catch (error) {
+          console.error(error);
+        }
+      }
+    }
   }
 });
 
@@ -92,3 +106,4 @@ client.on("interactionCreate", async interaction => {
 // Login securely via environment variable
 // ---------------------------
 client.login(process.env.TOKEN);
+
