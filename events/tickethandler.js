@@ -11,6 +11,7 @@ module.exports = {
     // Replace with your staff role IDs
     const staffRoles = ["1469795995649839365", "1469795995964539066"];
     const logChannelId = "1469795996811792576"; // Replace with your log channel ID
+    const ticketCategoryId = "1474139622345805929"; // Replace with your ticket category ID
 
     // ---------------------------
     // Open ticket
@@ -20,7 +21,7 @@ module.exports = {
       const timestamp = Date.now().toString().slice(-4); // last 4 digits for uniqueness
       const ticketChannelName = `ticket-${member.user.username.toLowerCase()}-${timestamp}`;
 
-      // Create ticket channel
+      // Permission overwrites
       const permissionOverwrites = [
         { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] }, // everyone else
         { id: member.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] } // ticket opener
@@ -34,9 +35,11 @@ module.exports = {
         });
       }
 
+      // Create ticket channel inside the category
       const ticketChannel = await guild.channels.create({
         name: ticketChannelName,
         type: ChannelType.GuildText,
+        parent: ticketCategoryId, // <-- This puts the ticket inside the category
         permissionOverwrites
       });
 
@@ -56,7 +59,7 @@ module.exports = {
       const row = new ActionRowBuilder().addComponents(closeButton);
 
       await ticketChannel.send({ content: `<@${member.user.id}>`, embeds: [embed], components: [row] });
-      await interaction.reply({ content: `Your ticket has been created: ${ticketChannel}`, ephemeral: true });
+      await interaction.reply({ content: `Find your ticket here love: ${ticketChannel}`, ephemeral: true });
     }
 
     // ---------------------------
@@ -87,4 +90,3 @@ module.exports = {
     }
   }
 };
-
