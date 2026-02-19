@@ -43,7 +43,8 @@ module.exports = {
       await interaction.deferReply({ ephemeral: true });
 
       const timestamp = Date.now().toString().slice(-4);
-      const ticketName = `ticket-${member.user.username.toLowerCase()}-${timestamp}`;
+      const ticketName = const ticketName = `ticket-${member.user.username.toLowerCase()}`;
+
 
       // Permission overwrites
       const permissionOverwrites = [
@@ -77,7 +78,7 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setTitle("Incoming order!")
         .setDescription("Please type `.order` to start your order.\nDo not overping staff or owners or your ticket will be closed.")
-        .setColor(0x808080);
+        .setColor(0xFFC0CB);
 
       // Close button
       const closeButton = new ButtonBuilder()
