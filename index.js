@@ -31,7 +31,7 @@ const client = new Client({
 client.commands = new Collection();
 
 // ---------------------------
-// Load commands dynamically from the commands folder
+// Load slash commands dynamically
 // ---------------------------
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
@@ -39,15 +39,20 @@ const commands = [];
 
 for (const file of commandFiles) {
   const command = require(`./commands/${file}`);
-  client.commands.set(command.data.name, command);
-  commands.push(command.data.toJSON());
+
+  // Only register slash commands
+  if (command.data) {
+    client.commands.set(command.data.name, command);
+    commands.push(command.data.toJSON());
+  }
 }
 
-// 🔥 Require sticky command once for message handling
+// Load message handlers
 const stickyCommand = require("./commands/sticky");
+const autoResponder = require("./commands/autoresponder");
 
 // ---------------------------
-// Register commands with Discord
+// Register slash commands
 // ---------------------------
 const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
@@ -55,7 +60,7 @@ client.once("ready", async () => {
   console.log(`Lacey is online as ${client.user.tag}`);
 
   const latency = Date.now() - client.readyTimestamp;
-  console.log(`🏎️ Lacey latency: ${latency}ms`);
+  console.log(`lacey's latency: ${latency}ms`);
 
   client.user.setPresence({
     activities: [{
@@ -78,7 +83,7 @@ client.once("ready", async () => {
 });
 
 // ---------------------------
-// Handle slash commands + buttons
+// Handle interactions
 // ---------------------------
 client.on("interactionCreate", async (interaction) => {
 
@@ -111,13 +116,14 @@ client.on("interactionCreate", async (interaction) => {
 });
 
 // ---------------------------
-// 🔥 Sticky message handler
+// Handle normal messages
 // ---------------------------
 client.on("messageCreate", async (message) => {
   stickyCommand.handleMessage(message);
+  autoResponder.handleMessage(message);
 });
 
 // ---------------------------
-// Login securely via environment variable
+// Login
 // ---------------------------
 client.login(process.env.TOKEN);
