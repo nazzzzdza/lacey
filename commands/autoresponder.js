@@ -4,13 +4,10 @@ module.exports = {
   async handleMessage(message) {
     if (message.author.bot) return;
 
-    // 🔧 CHANGE THIS to your role ID
     const supportRoleId = "1469795995649839365";
 
-    // Trigger word
     if (message.content.toLowerCase().startsWith(".ask")) {
 
-      // Optional: prevent spam (5 sec cooldown per channel)
       if (!this.cooldowns) this.cooldowns = new Map();
 
       const now = Date.now();
@@ -23,9 +20,9 @@ module.exports = {
 
       this.cooldowns.set(message.channel.id, now);
 
-      await message.channel.send({
-        content: `-# <@&${supportRoleId}> someone needs assistance <3`
-      });
+      await message.channel.send(
+        `-# <@&${supportRoleId}> someone needs assistance <3`
+      );
     }
   }
 };
