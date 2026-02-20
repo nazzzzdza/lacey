@@ -31,10 +31,9 @@ const client = new Client({
 client.commands = new Collection();
 
 // ---------------------------
-// Load slash commands dynamically
+// Load commands dynamically
 // ---------------------------
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
-
 const commands = [];
 
 for (const file of commandFiles) {
@@ -47,7 +46,7 @@ for (const file of commandFiles) {
   }
 }
 
-// Load message handlers
+// Load message-based systems
 const stickyCommand = require("./commands/sticky");
 const autoResponder = require("./commands/autoresponder");
 
@@ -60,7 +59,7 @@ client.once("ready", async () => {
   console.log(`Lacey is online as ${client.user.tag}`);
 
   const latency = Date.now() - client.readyTimestamp;
-  console.log(`lacey's latency: ${latency}ms`);
+  console.log(`🏎️ Lacey latency: ${latency}ms`);
 
   client.user.setPresence({
     activities: [{
@@ -83,10 +82,11 @@ client.once("ready", async () => {
 });
 
 // ---------------------------
-// Handle interactions
+// Handle ALL interactions
 // ---------------------------
 client.on("interactionCreate", async (interaction) => {
 
+  // Slash Commands
   if (interaction.isChatInputCommand()) {
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
@@ -95,14 +95,17 @@ client.on("interactionCreate", async (interaction) => {
       await command.execute(interaction);
     } catch (error) {
       console.error(error);
-      await interaction.reply({
-        content: "There was an error executing that command, dm naz with ss.",
-        ephemeral: true
-      });
+      if (!interaction.replied) {
+        await interaction.reply({
+          content: "There was an error executing that command, dm naz with ss.",
+          ephemeral: true
+        });
+      }
     }
   }
 
-  else if (interaction.isButton()) {
+  // Buttons, Modals, Select Menus, etc.
+  else {
     for (const command of client.commands.values()) {
       if (typeof command.handleInteraction === "function") {
         try {
