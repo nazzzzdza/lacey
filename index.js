@@ -20,7 +20,14 @@ app.listen(PORT, () => {
 // ---------------------------
 // Discord client
 // ---------------------------
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({ 
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ] 
+});
+
 client.commands = new Collection();
 
 // ---------------------------
@@ -36,6 +43,9 @@ for (const file of commandFiles) {
   commands.push(command.data.toJSON());
 }
 
+// 🔥 Require sticky command once for message handling
+const stickyCommand = require("./commands/sticky");
+
 // ---------------------------
 // Register commands with Discord
 // ---------------------------
@@ -44,21 +54,18 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 client.once("ready", async () => {
   console.log(`Lacey is online as ${client.user.tag}`);
 
-  // Log latency
   const latency = Date.now() - client.readyTimestamp;
   console.log(`🏎️ Lacey latency: ${latency}ms`);
 
-  // Streaming status (purple Twitch icon)
   client.user.setPresence({
     activities: [{
       name: "checking your orders <3",
-      type: 1, // Streaming
-      url: "https://www.twitch.tv/laceyshp" // <-- Replace with your Twitch URL
+      type: 1,
+      url: "https://www.twitch.tv/laceyshp"
     }],
     status: "online"
   });
 
-  // Register all commands globally
   try {
     await rest.put(
       Routes.applicationCommands(client.user.id),
@@ -71,10 +78,10 @@ client.once("ready", async () => {
 });
 
 // ---------------------------
-// Handle all interactions
+// Handle slash commands + buttons
 // ---------------------------
 client.on("interactionCreate", async (interaction) => {
-  // ---- Slash commands ----
+
   if (interaction.isChatInputCommand()) {
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
@@ -83,13 +90,14 @@ client.on("interactionCreate", async (interaction) => {
       await command.execute(interaction);
     } catch (error) {
       console.error(error);
-      await interaction.reply({ content: "There was an error executing that command, dm naz with ss.", ephemeral: true });
+      await interaction.reply({
+        content: "There was an error executing that command, dm naz with ss.",
+        ephemeral: true
+      });
     }
   }
 
-  // ---- Button interactions ----
   else if (interaction.isButton()) {
-    // Forward the button interaction to all loaded commands that have a handleInteraction method
     for (const command of client.commands.values()) {
       if (typeof command.handleInteraction === "function") {
         try {
@@ -103,7 +111,13 @@ client.on("interactionCreate", async (interaction) => {
 });
 
 // ---------------------------
+// 🔥 Sticky message handler
+// ---------------------------
+client.on("messageCreate", async (message) => {
+  stickyCommand.handleMessage(message);
+});
+
+// ---------------------------
 // Login securely via environment variable
 // ---------------------------
 client.login(process.env.TOKEN);
-
