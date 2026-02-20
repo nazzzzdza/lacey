@@ -13,7 +13,7 @@ module.exports = {
     .setName("queue")
     .setDescription("new queue order")
     .addUserOption(option =>
-      option.setName("user")
+      option.setName("buyer")
         .setDescription("buyer")
         .setRequired(true)
     )
@@ -36,7 +36,7 @@ module.exports = {
       .setTitle("New Order")
       .setColor(0xFFC0CB)
       .addFields(
-        { name: "♡ ", value: `<@${targetUser.id}>` },
+        { name: "♡", value: `<@${targetUser.id}>` },
         { name: "♡ bought", value: items },
         { name: "♡ status", value: "pending" }
       )
@@ -84,19 +84,17 @@ module.exports = {
     if (interaction.customId === "queue_processing") newStatus = "processing";
     if (interaction.customId === "queue_done") newStatus = "done";
 
-    // Rebuild embed properly
     const updatedEmbed = EmbedBuilder.from(oldEmbed);
 
-    const fields = updatedEmbed.data.fields.map(field => {
-      if (field.name === "status") {
-        return { name: "status", value: newStatus };
+    const updatedFields = updatedEmbed.data.fields.map(field => {
+      if (field.name === "♡ status") {
+        return { name: "♡ status", value: newStatus };
       }
       return field;
     });
 
-    updatedEmbed.setFields(fields);
+    updatedEmbed.setFields(updatedFields);
 
-    // Rebuild buttons (only clicked one disabled)
     const newRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("queue_paid")
