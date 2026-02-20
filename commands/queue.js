@@ -6,7 +6,7 @@ const {
   ButtonStyle 
 } = require("discord.js");
 
-const QUEUE_CHANNEL_ID = "PUT_QUEUE_CHANNEL_ID_HERE";
+const QUEUE_CHANNEL_ID = "1474363784910077982";
 
 module.exports = {
   data: new SlashCommandBuilder()
