@@ -6,20 +6,20 @@ const {
   ButtonStyle 
 } = require("discord.js");
 
-const QUEUE_CHANNEL_ID = "1474363784910077982";
+const QUEUE_CHANNEL_ID = "PUT_QUEUE_CHANNEL_ID_HERE";
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("queue")
-    .setDescription("new queue")
+    .setDescription("new queue order")
     .addUserOption(option =>
-      option.setName("buyer")
-        .setDescription("mention buyer")
+      option.setName("user")
+        .setDescription("buyer")
         .setRequired(true)
     )
     .addStringOption(option =>
       option.setName("items")
-        .setDescription("items bought + amount ex. 1x dcr")
+        .setDescription("items bought ex. 1x dcr")
         .setRequired(true)
     ),
 
@@ -29,17 +29,18 @@ module.exports = {
 
     const queueChannel = interaction.guild.channels.cache.get(QUEUE_CHANNEL_ID);
     if (!queueChannel) {
-      return interaction.reply({ content: "queue channel not found.", ephemeral: true });
+      return interaction.reply({ content: "queue channel not found!", ephemeral: true });
     }
 
     const embed = new EmbedBuilder()
-      .setTitle("tysm for ordering cutie 𝜗ৎ")
+      .setTitle("New Order")
       .setColor(0xFFC0CB)
-      .setDescription(
-        `𖹭 <@${targetUser.id}>\n` +
-        `𖹭 bought: ${items}\n` +
-        `𖹭 status: Pending`
-      );
+      .addFields(
+        { name: "♡ ", value: `<@${targetUser.id}>` },
+        { name: "♡ bought", value: items },
+        { name: "♡ status", value: "pending" }
+      )
+      .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -64,7 +65,7 @@ module.exports = {
     });
 
     await interaction.reply({
-      content: "new order added to queue!!",
+      content: "new order added to queue love",
       ephemeral: true
     });
   },
@@ -74,31 +75,51 @@ module.exports = {
     if (!interaction.customId.startsWith("queue_")) return;
 
     const message = interaction.message;
-    const embed = message.embeds[0];
-    if (!embed) return;
+    const oldEmbed = message.embeds[0];
+    if (!oldEmbed) return;
 
-    let newStatus = "Pending";
+    let newStatus = "pending";
 
-    if (interaction.customId === "queue_paid") newStatus = "**paid**";
-    if (interaction.customId === "queue_processing") newStatus = "**processing**";
-    if (interaction.customId === "queue_done") newStatus = "**done**";
+    if (interaction.customId === "queue_paid") newStatus = "paid";
+    if (interaction.customId === "queue_processing") newStatus = "processing";
+    if (interaction.customId === "queue_done") newStatus = "done";
 
-    // Update embed text
-    const updatedEmbed = EmbedBuilder.from(embed)
-      .setDescription(
-        embed.description.replace(/Status: .*/, `Status: ${newStatus}`)
-      );
+    // Rebuild embed properly
+    const updatedEmbed = EmbedBuilder.from(oldEmbed);
 
-    // Disable all buttons
-    const disabledRow = new ActionRowBuilder().addComponents(
-      message.components[0].components.map(btn =>
-        ButtonBuilder.from(btn).setDisabled(true)
-      )
+    const fields = updatedEmbed.data.fields.map(field => {
+      if (field.name === "status") {
+        return { name: "status", value: newStatus };
+      }
+      return field;
+    });
+
+    updatedEmbed.setFields(fields);
+
+    // Rebuild buttons (only clicked one disabled)
+    const newRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("queue_paid")
+        .setLabel("paid")
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(interaction.customId === "queue_paid"),
+
+      new ButtonBuilder()
+        .setCustomId("queue_processing")
+        .setLabel("processing")
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(interaction.customId === "queue_processing"),
+
+      new ButtonBuilder()
+        .setCustomId("queue_done")
+        .setLabel("done")
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(interaction.customId === "queue_done")
     );
 
     await interaction.update({
       embeds: [updatedEmbed],
-      components: [disabledRow]
+      components: [newRow]
     });
   }
 };
